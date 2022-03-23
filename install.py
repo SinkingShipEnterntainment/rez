@@ -1,3 +1,18 @@
+# Copyright Contributors to the Rez project
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+
 """
 This script uses venv/virtualenv to create a standalone, production-ready Rez
 installation in the specified directory.
@@ -20,8 +35,8 @@ sys.path.insert(0, src_path)
 # though rez is not yet built.
 #
 from rez.utils._version import _rez_version  # noqa: E402
+from rez.utils.which import which  # noqa: E402
 from rez.cli._entry_points import get_specifications  # noqa: E402
-from rez.backport.shutilwhich import which  # noqa: E402
 from rez.vendor.distlib.scripts import ScriptMaker  # noqa: E402
 
 # switch to builtin venv in python 3.7+

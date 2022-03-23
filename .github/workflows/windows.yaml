@@ -45,14 +45,13 @@ jobs:
         python-version:
           - '2.7.17'
           # TODO add back once failing windows py3 builds are investigated
-          #- '3.6.8'
           #- '3.7.5'
       fail-fast: false
 
     steps:
 
       - name: Checkout
-        uses: actions/checkout@v1
+        uses: actions/checkout@v2
 
       - name: Run Docker image (installs and tests rez)
         run: |

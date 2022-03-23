@@ -1,3 +1,18 @@
+# Copyright Contributors to the Rez project
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+
 """
 Utilities related to process/script execution.
 """
@@ -6,11 +21,11 @@ from rez.vendor.six import six
 from rez.utils.yaml import dump_yaml
 from rez.vendor.enum import Enum
 from contextlib import contextmanager
-from io import UnsupportedOperation
 import subprocess
 import sys
 import stat
 import os
+import io
 
 
 @contextmanager
@@ -54,10 +69,12 @@ class Popen(_PopenBase):
         if "stdin" not in kwargs:
             try:
                 file_no = sys.stdin.fileno()
-            except (
-                AttributeError,
-                UnsupportedOperation  # https://github.com/nerdvegas/rez/pull/966
-            ):
+
+            # https://github.com/nerdvegas/rez/pull/966
+            except (AttributeError, io.UnsupportedOperation):
+                file_no = None
+
+            if file_no is None and sys.__stdin__ is not None:
                 file_no = sys.__stdin__.fileno()
 
             if file_no not in (0, 1, 2):

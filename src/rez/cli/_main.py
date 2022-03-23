@@ -1,3 +1,18 @@
+# Copyright Contributors to the Rez project
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+
 """
 The main command-line entry point.
 """
@@ -9,7 +24,7 @@ from argparse import _StoreTrueAction, SUPPRESS
 from rez.cli._util import subcommands, LazyArgumentParser, _env_var_true
 from rez.utils.logging_ import print_error
 from rez.exceptions import RezError, RezSystemError, _NeverError
-from rez import __version__
+from rez import __version__, module_root_path
 
 
 # true if command was like 'rez-env' rather than 'rez env'
@@ -84,12 +99,15 @@ def setup_parser():
     Returns:
         LazyArgumentParser: Argument parser for rez command.
     """
+    py = sys.version_info
     parser = LazyArgumentParser("rez")
 
     parser.add_argument("-i", "--info", action=InfoAction,
                         help="print information about rez and exit")
     parser.add_argument("-V", "--version", action="version",
-                        version="Rez %s" % __version__)
+                        version="Rez %s from %s (python %d.%d)" % (
+                            __version__, module_root_path, py.major, py.minor
+                        ))
 
     # add args common to all subcommands... we add them both to the top parser,
     # AND to the subparsers, for two reasons:
@@ -101,8 +119,8 @@ def setup_parser():
 
     # add lazy subparsers
     subparser = parser.add_subparsers(dest='cmd', metavar='COMMAND')
-    for subcommand in subcommands:
-        module_name = "rez.cli.%s" % subcommand
+    for subcommand, data in subcommands.items():
+        module_name = data.get('module_name', 'rez.cli.%s' % subcommand)
 
         subparser.add_parser(
             subcommand,
@@ -193,19 +211,3 @@ def run(command=None):
 
 if __name__ == '__main__':
     run()
-
-
-# Copyright 2013-2016 Allan Johns.
-#
-# This library is free software: you can redistribute it and/or
-# modify it under the terms of the GNU Lesser General Public
-# License as published by the Free Software Foundation, either
-# version 3 of the License, or (at your option) any later version.
-#
-# This library is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-# Lesser General Public License for more details.
-#
-# You should have received a copy of the GNU Lesser General Public
-# License along with this library.  If not, see <http://www.gnu.org/licenses/>.

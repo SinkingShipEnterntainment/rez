@@ -1,3 +1,18 @@
+# Copyright Contributors to the Rez project
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+
 """
 test shell invocation
 """
@@ -11,6 +26,7 @@ from rez.utils.execution import ExecutableScriptMode, _get_python_script_files
 from rez.tests.util import TestBase, TempdirMixin, per_available_shell, \
     install_dependent
 from rez.bind import hello_world
+from rez.config import config
 import unittest
 import subprocess
 import tempfile
@@ -180,20 +196,48 @@ class TestShells(TestBase, TempdirMixin):
             self.assertEqual(_stdout(p), "Hello Rez World!")
             os.remove(path)
 
-    @per_available_shell()
+    # TODO fix cmd shell command string escape
+    # as per https://github.com/nerdvegas/rez/pull/1130, then remove this
+    # exclusion
+    #
+    @per_available_shell(exclude=["cmd"])
     @install_dependent()
     def test_rez_env_output(self):
-        # here we are making sure that running a command via rez-env prints
-        # exactly what we expect.
+        target_shell = config.default_shell  # overridden by test util
 
-        # Assumes that the shell has an echo command, build-in or alias
-        cmd = [os.path.join(system.rez_bin_path, "rez-env"), "--", "echo", "hey"]
-        process = subprocess.Popen(
-            cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE, universal_newlines=True
-        )
-        sh_out = process.communicate()
-        self.assertEqual(sh_out[0].strip(), "hey")
+        def _test(txt):
+            # Assumes that the shell has an echo command, built-in or alias
+            binpath = os.path.join(system.rez_bin_path, "rez-env")
+            args = [binpath, "--shell", target_shell, "--", "echo", txt]
+
+            process = subprocess.Popen(
+                args, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE, universal_newlines=True
+            )
+            sh_out = process.communicate()
+
+            # because powershell may not exit with !0 on error, depending on
+            # how it's been configured
+            #
+            if sh_out[1]:
+                raise Exception("Command %r failed:\n%s" % (txt, sh_out[1]))
+
+            self.assertEqual(sh_out[0].strip(), txt)
+
+        # please note - it's no coincidence that there are no substrings like
+        # '$you' here. These would expand to the equivalent env-var (as
+        # intended), which would be an empty string. We're not testing that
+        # here though.
+        #
+
+        _test("hey")  # simple case
+        _test("hey you")  # with a space
+        _test("<hey>")  # special characters
+        _test("!hey>$")  # more special characters
+        _test("'hey'")  # single quotes
+        _test('"hey"')  # double quotes
+        _test("hey `")  # backtick
+        _test("hey $ ?yeah> 'you'..^!")  # throw lots of stuff at it
 
     @per_available_shell()
     @install_dependent()
@@ -422,19 +466,3 @@ class TestShells(TestBase, TempdirMixin):
 
 if __name__ == '__main__':
     unittest.main()
-
-
-# Copyright 2013-2016 Allan Johns.
-#
-# This library is free software: you can redistribute it and/or
-# modify it under the terms of the GNU Lesser General Public
-# License as published by the Free Software Foundation, either
-# version 3 of the License, or (at your option) any later version.
-#
-# This library is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-# Lesser General Public License for more details.
-#
-# You should have received a copy of the GNU Lesser General Public
-# License along with this library.  If not, see <http://www.gnu.org/licenses/>.

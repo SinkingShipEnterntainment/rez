@@ -1,3 +1,18 @@
+# Copyright Contributors to the Rez project
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+
 """
 Release a new version of rez.
 
@@ -237,7 +252,7 @@ if __name__ == "__main__":
         "-s", "--step", choices=("push", "tag", "release_notes"),
         help="Just run one step of the release process")
     parser.add_argument(
-        "-c", "--changelog", nargs='+', metavar="ISSUE", type=int,
+        "-c", "--changelog", nargs='*', metavar="ISSUE", type=int,
         help="Generate changelog entry to be added to CHANGELOG.md")
     parser.add_argument(
         "-v", "--verbose", action="store_true",
@@ -246,7 +261,7 @@ if __name__ == "__main__":
     opts = parser.parse_args()
     verbose = opts.verbose
 
-    if opts.changelog:
+    if opts.changelog is not None:
         issue_nums = opts.changelog
         generate_changelog_entry(issue_nums)
         sys.exit(0)

@@ -1,13 +1,30 @@
+# Copyright Contributors to the Rez project
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+
 import os
 import re
-from subprocess import PIPE, list2cmdline
+from subprocess import PIPE
 
 from rez.config import config
+from rez.vendor.six import six
 from rez.rex import RexExecutor, OutputStyle, EscapedString
 from rez.shells import Shell
 from rez.system import system
 from rez.utils.platform_ import platform_
 from rez.utils.execution import Popen
+from rez.util import shlex_join
 
 
 class PowerShellBase(Shell):
@@ -187,7 +204,19 @@ class PowerShellBase(Shell):
             executor.command(shell_command)
 
         # Forward exit call to parent PowerShell process
-        executor.command("exit $LastExitCode")
+        #
+        # Note that in powershell, $LASTEXITCODE is only set after running an
+        # executable - in other cases (such as when a command is not found),
+        # only the bool $? var is set.
+        #
+        executor.command(
+            "if(! $?) {\n"
+            "  if ($LASTEXITCODE) {\n"
+            "    exit $LASTEXITCODE\n"
+            "  }\n"
+            "  exit 1\n"
+            "}"
+        )
 
         code = executor.get_output()
         target_file = os.path.join(tmpdir,
@@ -253,14 +282,15 @@ class PowerShellBase(Shell):
 
     def setenv(self, key, value):
         value = self.escape_string(value)
-        self._addline('$Env:{0} = "{1}"'.format(key, value))
+        self._addline('Set-Item -Path "Env:{0}" -Value "{1}"'.format(key, value))
 
     def appendenv(self, key, value):
         value = self.escape_string(value)
         # Be careful about ambiguous case in pwsh on Linux where pathsep is :
         # so that the ${ENV:VAR} form has to be used to not collide.
         self._addline(
-            '$Env:{0} = "${{Env:{0}}}{1}{2}"'.format(key, os.path.pathsep, value)
+            'Set-Item -Path "Env:{0}" -Value ((Get-ChildItem "Env:{0}").Value + "{1}{2}")'.format(
+                key, os.path.pathsep, value)
         )
 
     def unsetenv(self, key):
@@ -273,8 +303,9 @@ class PowerShellBase(Shell):
         value = EscapedString.disallow(value)
         # TODO: Find a way to properly escape paths in alias() calls that also
         # contain args
-        cmd = "function {key}() {{ {value} $args }}"
-        self._addline(cmd.format(key=key, value=value))
+        #
+        cmd = "function %s() {{ %s @args }}" % (key, value)
+        self._addline(cmd)
 
     def comment(self, value):
         for line in value.split('\n'):
@@ -303,11 +334,25 @@ class PowerShellBase(Shell):
         return ["${Env:%s}" % key, "$Env:%s" % key]
 
     @classmethod
-    def join(cls, command):
-        # TODO: This may disappear in future [1]
-        # [1] https://bugs.python.org/issue10838
-        return list2cmdline(command)
-
-    @classmethod
     def line_terminator(cls):
         return "\n"
+
+    @classmethod
+    def join(cls, command):
+        if isinstance(command, six.string_types):
+            return command
+
+        replacements = [
+            # escape ` as ``
+            ('`', "``"),
+
+            # escape " as `"
+            ('"', '`"')
+        ]
+
+        joined = shlex_join(command, replacements=replacements)
+
+        # add call operator in case executable gets quotes applied
+        # https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_operators?view=powershell-7.1#call-operator-
+        #
+        return "& " + joined
